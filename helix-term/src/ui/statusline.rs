@@ -1,6 +1,7 @@
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::Theme;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -188,15 +189,12 @@ where
                 "   "
             }
         ),
-        if visible && config.color_modes {
-            match context.editor.mode() {
-                Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
-                Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
-                Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
-            }
-        } else {
-            None
-        },
+        mode_style(
+            visible,
+            config.color_modes,
+            context.editor.mode(),
+            &context.editor.theme,
+        ),
     );
 }
 
@@ -341,10 +339,11 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let position = get_position(context);
+    write(context, " ".to_owned(), None);
     write(
         context,
         format!(" {}:{} ", position.row + 1, position.col + 1),
-        None,
+        mode_style_for_context(context),
     );
 }
 
@@ -365,8 +364,8 @@ where
     let maxrows = context.doc.text().len_lines();
     write(
         context,
-        format!("{}%", (position.row + 1) * 100 / maxrows),
-        None,
+        format!("{}% ", (position.row + 1) * 100 / maxrows),
+        mode_style_for_context(context),
     );
 }
 
@@ -529,5 +528,26 @@ where
 {
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg), None)
+    }
+}
+
+fn mode_style_for_context(context: &RenderContext) -> Option<Style> {
+    mode_style(
+        context.focused,
+        context.editor.config().color_modes,
+        context.editor.mode,
+        &context.editor.theme,
+    )
+}
+
+fn mode_style(focused: bool, color_modes: bool, mode: Mode, theme: &Theme) -> Option<Style> {
+    if focused && color_modes {
+        match mode {
+            Mode::Insert => Some(theme.get("ui.statusline.insert")),
+            Mode::Select => Some(theme.get("ui.statusline.select")),
+            Mode::Normal => Some(theme.get("ui.statusline.normal")),
+        }
+    } else {
+        None
     }
 }
