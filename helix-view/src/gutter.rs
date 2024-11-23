@@ -162,22 +162,19 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
-    let mode = editor.mode;
 
     Box::new(
         move |line: usize, selected: bool, first_visual_line: bool, out: &mut String| {
+            use crate::editor::LineNumber;
             if line == last_line_in_view && !draw_last {
-                write!(out, "{:>1$}", '~', width).unwrap();
+                if line_number == LineNumber::Relative && current_line == line {
+                    write!(out, "{:<1$}", '~', width).unwrap();
+                } else {
+                    write!(out, "{:>1$}", '~', width).unwrap();
+                }
                 Some(linenr)
             } else {
-                use crate::{document::Mode, editor::LineNumber};
-
-                let relative = line_number == LineNumber::Relative
-                    && mode != Mode::Insert
-                    && is_focused
-                    && current_line != line;
-
-                let display_num = if relative {
+                let display_num = if line_number == LineNumber::Relative && current_line != line {
                     abs_diff(current_line, line)
                 } else {
                     line + 1
@@ -190,7 +187,11 @@ pub fn line_numbers<'doc>(
                 };
 
                 if first_visual_line {
-                    write!(out, "{:>1$}", display_num, width).unwrap();
+                    if line_number == LineNumber::Relative && current_line == line {
+                        write!(out, "{:<1$}", display_num, width).unwrap();
+                    } else {
+                        write!(out, "{:>1$}", display_num, width).unwrap();
+                    }
                 } else {
                     write!(out, "{:>1$}", " ", width).unwrap();
                 }
